@@ -1,28 +1,20 @@
 import React, { useState, ChangeEvent, FormEvent } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import Header from './layout/Header';
 import Footer from './layout/Footer';
 import Sidebar from './layout/Sidebar';
 import CardAccion from './CardAccion';
-
-export interface UsuarioItem {
-  id: number;
-  nombre: string;
-  correo: string;
-  rol: 'Mecánico' | 'Cliente' | 'Administrador';
-  vehiculo?: string;
-  estado: 'Activo' | 'Inactivo';
-}
-
-const usuariosIniciales: UsuarioItem[] = [
-  { id: 1, nombre: 'Carlos Rodríguez', correo: 'carlos.mecanico@autometrica.com', rol: 'Mecánico', estado: 'Activo' },
-  { id: 2, nombre: 'Ana María López', correo: 'ana.lopez@gmail.com', rol: 'Cliente', vehiculo: 'Mazda 3 (2020)', estado: 'Activo' },
-  { id: 3, nombre: 'Jorge Martínez', correo: 'jorge.mecanico@autometrica.com', rol: 'Mecánico', estado: 'Activo' },
-  { id: 4, nombre: 'Laura Fernández', correo: 'laura.f@hotmail.com', rol: 'Cliente', vehiculo: 'Toyota Hilux (2018)', estado: 'Inactivo' },
-];
+import { Link } from 'react-router-dom';
+import { RootState, AppDispatch } from '../store/store';
+import { agregarUsuario, cambiarEstadoUsuario, UsuarioItem } from '../store/slices/usuariosSlice';
+import { agregarNotificacion } from '../store/slices/notificationsSlice';
 
 const Usuarios: React.FC = () => {
-  // Manejo de estado local con useState y tipado estricto explícito en TypeScript
-  const [usuarios, setUsuarios] = useState<UsuarioItem[]>(usuariosIniciales);
+  // Manejo de estado global con Redux Toolkit
+  const dispatch = useDispatch<AppDispatch>();
+  const usuarios = useSelector((state: RootState) => state.usuarios.items);
+
+  // Estados locales para filtros y formulario
   const [busqueda, setBusqueda] = useState<string>('');
   const [filtroRol, setFiltroRol] = useState<string>('todos');
   const [contadorMecanicos, setContadorMecanicos] = useState<number>(12);
@@ -57,7 +49,18 @@ const Usuarios: React.FC = () => {
       estado: 'Activo',
     };
 
-    setUsuarios((prev) => [nuevo, ...prev]);
+    // Despachar nuevo usuario al estado global de Redux
+    dispatch(agregarUsuario(nuevo));
+
+    // Generar notificación en tiempo real conectada a la tabla
+    dispatch(
+      agregarNotificacion({
+        title: 'Usuario Registrado',
+        body: `Se ha registrado a ${nuevo.nombre} (${nuevo.rol}) en la base de datos.`,
+        tipo: 'info',
+      })
+    );
+
     if (rolNuevo === 'Mecánico') {
       setContadorMecanicos((prev) => prev + 1);
     }
@@ -68,11 +71,18 @@ const Usuarios: React.FC = () => {
   };
 
   const toggleEstadoUsuario = (id: number): void => {
-    setUsuarios((prev) =>
-      prev.map((u) =>
-        u.id === id ? { ...u, estado: u.estado === 'Activo' ? 'Inactivo' : 'Activo' } : u
-      )
-    );
+    dispatch(cambiarEstadoUsuario(id));
+    const u = usuarios.find((item) => item.id === id);
+    if (u) {
+      const nuevoEstado = u.estado === 'Activo' ? 'Inactivo' : 'Activo';
+      dispatch(
+        agregarNotificacion({
+          title: 'Estado de Usuario Actualizado',
+          body: `Usuario ${u.nombre} ahora está ${nuevoEstado}.`,
+          tipo: nuevoEstado === 'Activo' ? 'exito' : 'alerta',
+        })
+      );
+    }
   };
 
   const handleAccionCard = (nombreAccion: string, detalle: string): void => {
@@ -80,6 +90,13 @@ const Usuarios: React.FC = () => {
       setMostrarForm(!mostrarForm);
     } else if (nombreAccion === 'Asignar Mecánico') {
       setClientesNotificados((prev) => prev + 1);
+      dispatch(
+        agregarNotificacion({
+          title: 'Mecánico Asignado',
+          body: 'Se asignó un mecánico de turno y se envió confirmación al cliente.',
+          tipo: 'info',
+        })
+      );
       alert('Se asignó un mecánico y se notificado al cliente.');
     } else {
       alert(`Módulo: Usuarios\nAcción: ${nombreAccion}\n${detalle}`);
@@ -123,7 +140,7 @@ const Usuarios: React.FC = () => {
               <strong>{clientesNotificados}</strong>
             </div>
             <div className="stat-card">
-              <span>Total Registrados</span>
+              <span>Total Registrados (BD)</span>
               <strong>{usuarios.length} usuarios</strong>
             </div>
           </div>
@@ -227,7 +244,11 @@ const Usuarios: React.FC = () => {
               ) : (
                 usuariosFiltrados.map((u) => (
                   <tr key={u.id}>
-                    <td>#{u.id}</td>
+                    <td>
+                      <Link to={`/usuarios/${u.id}`} style={{ color: 'var(--autometrica-primary)', fontWeight: 'bold' }}>
+                        #{u.id}
+                      </Link>
+                    </td>
                     <td><strong>{u.nombre}</strong></td>
                     <td>{u.correo}</td>
                     <td><span className="data-tag">{u.rol}</span></td>

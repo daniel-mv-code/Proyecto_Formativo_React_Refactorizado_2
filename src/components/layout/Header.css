@@ -1,0 +1,14 @@
+.header {
+  background: var(--autometrica-dark, #002244);
+  color: white;
+  padding: 15px 25px;
+  border-bottom: 4px solid var(--autometrica-primary, #0056b3);
+}
+
+.header-title {
+  margin: 0;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

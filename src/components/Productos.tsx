@@ -1,27 +1,20 @@
 import React, { useState, ChangeEvent, FormEvent } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import Header from './layout/Header';
 import Footer from './layout/Footer';
 import Sidebar from './layout/Sidebar';
 import CardAccion from './CardAccion';
-
-export interface Producto {
-  id: number;
-  nombre: string;
-  precio: number;
-  stock: number;
-  categoria: string;
-}
-
-const productosIniciales: Producto[] = [
-  { id: 1, nombre: 'Filtro de Aceite', precio: 35000, stock: 3, categoria: 'Filtros' },
-  { id: 2, nombre: 'Pastillas de Freno Delanteras', precio: 120000, stock: 12, categoria: 'Frenos' },
-  { id: 3, nombre: 'Aceite Sintético 5W-30 (Galón)', precio: 150000, stock: 8, categoria: 'Lubricantes' },
-  { id: 4, nombre: 'Batería 12V Heavy Duty', precio: 380000, stock: 2, categoria: 'Eléctrico' },
-+];
+import { Link } from 'react-router-dom';
+import { RootState, AppDispatch } from '../store/store';
+import { agregarProducto, actualizarStock, Producto } from '../store/slices/productosSlice';
+import { agregarNotificacion } from '../store/slices/notificationsSlice';
 
 const Productos: React.FC = () => {
-  // Manejo de estado local con useState y tipado estricto explícito en TypeScript
-  const [productos, setProductos] = useState<Producto[]>(productosIniciales);
+  // Manejo de estado global con Redux Toolkit
+  const dispatch = useDispatch<AppDispatch>();
+  const productos = useSelector((state: RootState) => state.productos.items);
+
+  // Estados locales para el formulario de entrada y filtrado
   const [nombreProducto, setNombreProducto] = useState<string>('');
   const [precioProducto, setPrecioProducto] = useState<number | ''>('');
   const [stockProducto, setStockProducto] = useState<number>(1);
@@ -66,7 +59,18 @@ const Productos: React.FC = () => {
       categoria,
     };
 
-    setProductos((prev) => [nuevo, ...prev]);
+    // Despacho de acción global a Redux
+    dispatch(agregarProducto(nuevo));
+
+    // Notificación en tiempo real conectada a la tabla de productos
+    dispatch(
+      agregarNotificacion({
+        title: 'Pieza Agregada',
+        body: `Se añadió "${nuevo.nombre}" al inventario (${nuevo.stock} unds - $${nuevo.precio.toLocaleString('es-CO')}).`,
+        tipo: 'exito',
+      })
+    );
+
     setNombreProducto('');
     setPrecioProducto('');
     setStockProducto(1);
@@ -75,9 +79,18 @@ const Productos: React.FC = () => {
   };
 
   const modificarStock = (id: number, delta: number): void => {
-    setProductos((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, stock: Math.max(0, p.stock + delta) } : p))
-    );
+    dispatch(actualizarStock({ id, cambio: delta }));
+
+    const prod = productos.find((p) => p.id === id);
+    if (prod && prod.stock + delta <= 2) {
+      dispatch(
+        agregarNotificacion({
+          title: 'Alerta de Stock Crítico',
+          body: `El repuesto "${prod.nombre}" ha quedado con ${Math.max(0, prod.stock + delta)} unidades.`,
+          tipo: 'alerta',
+        })
+      );
+    }
   };
 
   const handleAccionCard = (nombreAccion: string, detalle: string): void => {
@@ -111,7 +124,7 @@ const Productos: React.FC = () => {
           {/* Panel de Resumen e Indicadores en tiempo real */}
           <div className="dashboard-stats-banner">
             <div className="stat-card">
-              <span>Total de Productos</span>
+              <span>Total de Productos (BD)</span>
               <strong>{productos.length}</strong>
             </div>
             <div className="stat-card alert-stat">
@@ -144,7 +157,7 @@ const Productos: React.FC = () => {
           {/* Formulario Dinámico para Agregar Producto */}
           {mostrarFormulario && (
             <form onSubmit={handleAgregarProducto} className="form-autometrica form-inline-box">
-              <h3> Registrar Nuevo Repuesto</h3>
+              <h3>Registrar Nuevo Repuesto</h3>
               <div className="form-grid-3">
                 <label>
                   Nombre de la Pieza
@@ -217,7 +230,11 @@ const Productos: React.FC = () => {
               ) : (
                 productosFiltrados.map((p) => (
                   <tr key={p.id} className={p.stock <= 3 ? 'low-stock-row' : ''}>
-                    <td>#{p.id}</td>
+                    <td>
+                      <Link to={`/productos/${p.id}`} style={{ color: 'var(--autometrica-primary)', fontWeight: 'bold' }}>
+                        #{p.id}
+                      </Link>
+                    </td>
                     <td><strong>{p.nombre}</strong></td>
                     <td><span className="data-tag">{p.categoria}</span></td>
                     <td>${p.precio.toLocaleString('es-CO')}</td>

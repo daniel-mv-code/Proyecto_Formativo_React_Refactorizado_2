@@ -1,26 +1,20 @@
 import React, { useState, ChangeEvent, FormEvent } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import Header from './layout/Header';
 import Footer from './layout/Footer';
 import Sidebar from './layout/Sidebar';
 import CardAccion from './CardAccion';
-
-export interface Venta {
-  id: number;
-  cliente: string;
-  servicio: string;
-  monto: number;
-  fecha: string;
-}
-
-const ventasIniciales: Venta[] = [
-  { id: 1, cliente: 'Juan Pérez', servicio: 'Cambio de aceite', monto: 45000, fecha: '10:30 AM' },
-  { id: 2, cliente: 'María Gómez', servicio: 'Alineación y balanceo', monto: 80000, fecha: '11:15 AM' },
-  { id: 3, cliente: 'Carlos Ruiz', servicio: 'Cambio de pastillas de freno', monto: 120000, fecha: '01:45 PM' },
-];
+import { Link } from 'react-router-dom';
+import { RootState, AppDispatch } from '../store/store';
+import { registrarVenta, Venta } from '../store/slices/ventasSlice';
+import { agregarNotificacion } from '../store/slices/notificationsSlice';
 
 const Ventas: React.FC = () => {
-  // Manejo de estado local con useState y tipado estricto explícito en TypeScript
-  const [ventas, setVentas] = useState<Venta[]>(ventasIniciales);
+  // Manejo de estado global con Redux Toolkit
+  const dispatch = useDispatch<AppDispatch>();
+  const ventas = useSelector((state: RootState) => state.ventas.items);
+
+  // Estados locales para el formulario de venta y filtrado
   const [cliente, setCliente] = useState<string>('');
   const [servicio, setServicio] = useState<string>('');
   const [monto, setMonto] = useState<number | ''>('');
@@ -53,15 +47,25 @@ const Ventas: React.FC = () => {
     }
 
     const nuevaVenta: Venta = {
-      id: ventas.length + 1,
+      id: Date.now(),
       cliente,
       servicio,
       monto: Number(monto),
       fecha: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
     };
 
-    // Actualización dinámica del estado local de ventas
-    setVentas((prev) => [...prev, nuevaVenta]);
+    // Despacho global a Redux
+    dispatch(registrarVenta(nuevaVenta));
+
+    // Notificación en tiempo real conectada a la tabla de ventas
+    dispatch(
+      agregarNotificacion({
+        title: 'Venta Facturada',
+        body: `Factura a ${nuevaVenta.cliente} por "${nuevaVenta.servicio}" ($${nuevaVenta.monto.toLocaleString('es-CO')}).`,
+        tipo: 'exito',
+      })
+    );
+
     setCliente('');
     setServicio('');
     setMonto('');
@@ -76,7 +80,7 @@ const Ventas: React.FC = () => {
     }
   };
 
-  // Cálculo dinámico de total acumulado
+  // Cálculo dinámico de total acumulado desde el estado global
   const total = ventas.reduce((acc, v) => acc + v.monto, 0);
 
   // Filtrado dinámico de ventas
@@ -101,7 +105,7 @@ const Ventas: React.FC = () => {
           {/* Panel de Indicadores de Facturación en tiempo real */}
           <div className="dashboard-stats-banner">
             <div className="stat-card accent-card">
-              <span>Total Facturado</span>
+              <span>Total Facturado (BD)</span>
               <strong>${total.toLocaleString('es-CO')} COP</strong>
             </div>
             <div className="stat-card">
@@ -198,7 +202,11 @@ const Ventas: React.FC = () => {
               ) : (
                 ventasFiltradas.map((v) => (
                   <tr key={v.id}>
-                    <td>#{v.id}</td>
+                    <td>
+                      <Link to={`/ventas/${v.id}`} style={{ color: 'var(--autometrica-primary)', fontWeight: 'bold' }}>
+                        #{v.id}
+                      </Link>
+                    </td>
                     <td><small>{v.fecha}</small></td>
                     <td><strong>{v.cliente}</strong></td>
                     <td>{v.servicio}</td>
