@@ -1,55 +1,65 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import Usuarios from './components/Usuarios';
 import Productos from './components/Productos';
 import Login from './components/Login';
 import Registro from './components/Registro';
 import Ventas from './components/Ventas';
+import UsuarioDetalle from './components/UsuarioDetalle';
+import ProductoDetalle from './components/ProductoDetalle';
+import VentaDetalle from './components/VentaDetalle';
 import NotificationPanel from './components/NotificationPanel';
+import GlobalStatsBar from './components/GlobalStatsBar';
 import './App.css';
 
-export type Pagina = 'usuarios' | 'productos' | 'login' | 'registro' | 'ventas';
-
-const paginas: { key: Pagina; label: string }[] = [
-  { key: 'usuarios', label: 'Ver Usuarios' },
-  { key: 'productos', label: 'Ver Productos' },
-  { key: 'login', label: 'Ver Login' },
-  { key: 'registro', label: 'Ver Registro' },
-  { key: 'ventas', label: 'Ver Ventas' },
+const paginas = [
+  { path: '/usuarios', label: 'Ver Usuarios' },
+  { path: '/productos', label: 'Ver Productos' },
+  { path: '/login', label: 'Ver Login' },
+  { path: '/registro', label: 'Ver Registro' },
+  { path: '/ventas', label: 'Ver Ventas' },
 ];
 
 const App: React.FC = () => {
-  // Manejo de estado local con useState y tipado estricto
-  const [pagina, setPagina] = useState<Pagina>('usuarios');
-
-  const cambiarPagina = (nuevaPagina: Pagina): void => {
-    setPagina(nuevaPagina);
-  };
+  const location = useLocation();
 
   return (
     <div style={{ fontFamily: 'sans-serif', padding: '20px' }}>
       <nav className="main-nav">
         {paginas.map((p) => (
-          <button
-            key={p.key}
-            className={pagina === p.key ? 'active' : ''}
-            onClick={() => cambiarPagina(p.key)}
+          <Link
+            key={p.path}
+            to={p.path}
+            className={location.pathname.startsWith(p.path) ? 'active' : ''}
+            style={{ textDecoration: 'none' }}
           >
-            {p.label}
-          </button>
+            <button className={location.pathname.startsWith(p.path) ? 'active' : ''}>
+              {p.label}
+            </button>
+          </Link>
         ))}
       </nav>
 
+      {/* Barra de Estado Global reactiva en tiempo real (Persistente en todas las rutas) */}
+      <GlobalStatsBar />
+
       <hr />
 
-      {/* Lógica para mostrar un componente u otro */}
       <main>
-        {pagina === 'usuarios' && <Usuarios />}
-        {pagina === 'productos' && <Productos />}
-        {pagina === 'login' && <Login />}
-        {pagina === 'registro' && <Registro />}
-        {pagina === 'ventas' && <Ventas />}
+        <Routes>
+          <Route path="/" element={<Navigate to="/usuarios" />} />
+          <Route path="/usuarios" element={<Usuarios />} />
+          <Route path="/usuarios/:id" element={<UsuarioDetalle />} />
+          <Route path="/productos" element={<Productos />} />
+          <Route path="/productos/:id" element={<ProductoDetalle />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/registro" element={<Registro />} />
+          <Route path="/ventas" element={<Ventas />} />
+          <Route path="/ventas/:id" element={<VentaDetalle />} />
+        </Routes>
       </main>
       
+      {/* Componente independiente flotante con métricas y notificaciones de BD */}
       <NotificationPanel />
     </div>
   );

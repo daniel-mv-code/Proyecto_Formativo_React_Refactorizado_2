@@ -1,4 +1,5 @@
 import React from 'react';
+import './Header.css';
 
 interface HeaderProps {
   titulo: string;
@@ -6,8 +7,8 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ titulo }) => {
   return (
-    <header style={{ background: 'var(--autometrica-dark)', color: 'white', padding: '15px 25px', borderBottom: '4px solid var(--autometrica-primary)' }}>
-      <h1 style={{ margin: 0, fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+    <header className="header">
+      <h1 className="header-title">
         🔧 {titulo}
       </h1>
     </header>

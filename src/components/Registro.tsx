@@ -1,8 +1,12 @@
 import React, { useState, ChangeEvent, FormEvent } from 'react';
+import { useDispatch } from 'react-redux';
 import Header from './layout/Header';
 import Footer from './layout/Footer';
 import Sidebar from './layout/Sidebar';
 import CardAccion from './CardAccion';
+import { AppDispatch } from '../store/store';
+import { agregarUsuario } from '../store/slices/usuariosSlice';
+import { agregarNotificacion } from '../store/slices/notificationsSlice';
 
 interface UsuarioRegistrado {
   id: number;
@@ -13,6 +17,8 @@ interface UsuarioRegistrado {
 }
 
 const Registro: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+
   // Manejo de estado local con useState y tipado estricto explícito en TypeScript
   const [nombre, setNombre] = useState<string>('');
   const [correo, setCorreo] = useState<string>('');
@@ -49,16 +55,39 @@ const Registro: React.FC = () => {
       return;
     }
 
+    const rolFormateado =
+      rol === 'mecanico' ? 'Mecánico' : rol === 'administrador' ? 'Administrador' : 'Cliente';
+
     const nuevoUsuario: UsuarioRegistrado = {
       id: Date.now(),
       nombre,
       correo,
-      rol,
+      rol: rolFormateado,
       fechaRegistro: new Date().toLocaleTimeString('es-CO'),
     };
 
-    // Actualizar lista de usuarios registrados en el estado local
+    // Actualizar lista local de feedback
     setUsuariosRegistrados((prev) => [nuevoUsuario, ...prev]);
+
+    // Sincronizar en tiempo real con el estado global de Redux
+    dispatch(
+      agregarUsuario({
+        id: nuevoUsuario.id,
+        nombre: nuevoUsuario.nombre,
+        correo: nuevoUsuario.correo,
+        rol: rolFormateado as 'Mecánico' | 'Cliente' | 'Administrador',
+        estado: 'Activo',
+      })
+    );
+
+    // Disparar evento de notificación global
+    dispatch(
+      agregarNotificacion({
+        title: 'Nueva Cuenta Creada',
+        body: `Se registró con éxito la cuenta de ${nuevoUsuario.nombre} (${rolFormateado}).`,
+        tipo: 'exito',
+      })
+    );
 
     // Limpiar entradas de texto
     setNombre('');
